@@ -68,7 +68,7 @@ def split_and_copy_data_from_csv():
     )
 
     X_train, X_val, y_train, y_val = train_test_split(
-        X_train_val, y_train_val, test_size=VALIDATION_SPLIT / (1 - TEST_TEST_SPLIT), # Make sure TEST_SPLIT is defined correctly
+        X_train_val, y_train_val, test_size=VALIDATION_SPLIT / (1 - TEST_SPLIT), # Make sure TEST_SPLIT is defined correctly
         random_state=RANDOM_SEED, stratify=y_train_val
     )
 
