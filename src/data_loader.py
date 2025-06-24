@@ -124,9 +124,16 @@ def custom_image_preprocessing(img_array):
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     img_clahe = clahe.apply(img_denoised)
     img_normalized = img_clahe / 255.0
-    img_normalized = np.expand_dims(img_normalized, axis=-1)
+    # Ensure the output has the correct channel dimension for Keras (H, W, C)
+    if IMG_CHANNELS == 1:
+        img_normalized = np.expand_dims(img_normalized, axis=-1) # (H,W) -> (H,W,1)
+    elif IMG_CHANNELS == 3:
+        # Duplicate the grayscale channel 3 times to make it RGB-like for ImageNet models
+        img_normalized = np.stack([img_normalized, img_normalized, img_normalized], axis=-1) # (H,W) -> (H,W,3)
+    # The image generator's color_mode='grayscale' loads as (H,W,1), then squeezed to (H,W) for OpenCV.
+    # So img_normalized here is (H,W). The stack operation ensures it becomes (H,W,3).
 
-    return img_normalized
+    return img_normalized # This line remains
 
 
 def get_image_data_generators():

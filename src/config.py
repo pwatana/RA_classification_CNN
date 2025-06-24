@@ -20,7 +20,7 @@ os.makedirs(MODELS_DIR, exist_ok=True)
 # Image parameters
 IMG_HEIGHT = 224
 IMG_WIDTH = 224
-IMG_CHANNELS = 1 # Keep 1 for now; will change to 3 for transfer learning later
+IMG_CHANNELS = 3 # Keep 1 for now; will change to 3 for transfer learning later
 NUM_CLASSES = 3 # <--- CHANGED: Now 3 classes (Healthy, Mild RA, Severe RA)
 
 # RA Classification Score Bins (for 3 classes)
