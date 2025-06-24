@@ -5,9 +5,9 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLRO
 import numpy as np
 from sklearn.utils.class_weight import compute_class_weight # Import for class weight calculation
 
-from src.config import MODELS_DIR, MODEL_NAME, EPOCHS, HISTORY_NAME, RANDOM_SEED, BATCH_SIZE
-from src.data_loader import split_and_copy_data_from_csv, get_image_data_generators # <--- Data loader should return counts now
-from src.model import build_cnn_model
+from config import MODELS_DIR, MODEL_NAME, EPOCHS, HISTORY_NAME, RANDOM_SEED, BATCH_SIZE
+from data_loader import split_and_copy_data_from_csv, get_image_data_generators # <--- Data loader should return counts now
+from model import build_cnn_model
 
 def train_model():
     """
