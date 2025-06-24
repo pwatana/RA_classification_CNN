@@ -1,6 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras import layers, models # Use tensorflow.keras for this setup
-from src.config import IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS, NUM_CLASSES, LEARNING_RATE
+from config import IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS, NUM_CLASSES, LEARNING_RATE
 
 def build_cnn_model():
     """
@@ -32,7 +32,7 @@ def build_cnn_model():
         # Output Layer
         # Use 'sigmoid' activation for binary classification (NUM_CLASSES=2)
         # The loss function will be 'binary_crossentropy' for this setup.
-        layers.Dense(NUM_CLASSES, activation='sigmoid' if NUM_CLASSES == 2 else 'softmax')
+        layers.Dense(1, activation='sigmoid') # Correct for binary classification with binary_crossentropy    
     ])
 
     # Optimizer and Compilation
