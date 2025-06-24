@@ -1,0 +1,19 @@
+name: ra_classifier
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.9
+  - pip
+  - numpy
+  - pandas
+  - scikit-learn
+  - matplotlib
+  - seaborn
+  - pillow
+  - tensorflow
+  - opencv-python 
+  - jupyter
+  - ipykernel
+  - pip:
+    - -r requirements.txt 
