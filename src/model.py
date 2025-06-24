@@ -8,7 +8,7 @@ def build_cnn_model(): # Renamed to build_transfer_learning_model or keep build_
     """
     Builds a CNN model using EfficientNetB0 for transfer learning.
     """
-    # 1. Load the pre-trained EfficientNetB0 base model
+    # 1.Load the pre-trained EfficientNetB0 base model
     base_model = EfficientNetB0(
         weights='imagenet',       # Use weights pre-trained on ImageNet
         include_top=False,        # Exclude the original classification head
