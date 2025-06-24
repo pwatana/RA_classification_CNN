@@ -2,3 +2,5 @@
 *.png
 *.jpg
 *.h5
+__pycache__/
+*.pyc
