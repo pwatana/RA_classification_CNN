@@ -1,9 +1,10 @@
+# environment.yml
 name: ra_classifier
 channels:
   - defaults
   - conda-forge
 dependencies:
-  - python=3.9
+  - python=3.9           # Keep Python 3.9 for broader compatibility with TF 2.8.x
   - pip
   - numpy
   - pandas
@@ -11,9 +12,12 @@ dependencies:
   - matplotlib
   - seaborn
   - pillow
-  - tensorflow
-  # - opencv-python 
+  - tensorflow==2.8.0  # <--- PIN TENSORFLOW TO A VERSION THAT CONSISTENTLY USES KERAS 2.X
+  # - opencv-python      # For image preprocessing
   - jupyter
   - ipykernel
   - pip:
-    - -r requirements.txt 
+    - keras==2.8.0       # <--- PIN STANDALONE KERAS TO THIS VERSION (matches TF 2.8.x internal Keras)
+    - patchify         # Install via pip
+    - segmentation_models # Install via pip
+    # - -r requirements.txt
