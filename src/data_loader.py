@@ -89,21 +89,22 @@ def split_and_copy_data_from_csv():
 def custom_image_preprocessing(img_array):
     """
     Applies a series of preprocessing steps to an image array:
-    1. Grayscale conversion (if input is multi-channel)
+    1. Grayscale conversion (if input is multi-channel, though color_mode='grayscale' helps)
     2. Gaussian Denoising
     3. CLAHE (Contrast Limited Adaptive Histogram Equalization)
     4. Normalization to [0, 1]
     """
     # Convert to uint8 for OpenCV operations (important!)
+    # img_array will now be (H, W, 1) if color_mode='grayscale' is used.
     img_array_uint8 = img_array.astype(np.uint8)
 
-    # 1. Grayscale Conversion (if not already grayscale)
-    if len(img_array_uint8.shape) == 3 and img_array_uint8.shape[2] == 3:
-        img_gray = cv2.cvtColor(img_array_uint8, cv2.COLOR_RGB2GRAY)
-    elif len(img_array_uint8.shape) == 3 and img_array_uint8.shape[2] == 1:
-        img_gray = np.squeeze(img_array_uint8, axis=-1)
-    else:
-        img_gray = img_array_uint8
+    # Grayscale Conversion: If input is (H, W, 1), squeeze to (H, W) for OpenCV 2D operations
+    if len(img_array_uint8.shape) == 3 and img_array_uint8.shape[2] == 1:
+        img_gray = np.squeeze(img_array_uint8, axis=-1) # Remove channel dim to get (H, W)
+    elif len(img_array_uint8.shape) == 2:
+        img_gray = img_array_uint8 # Already (H, W)
+    else: # Fallback for unexpected shapes, e.g., if color_mode wasn't grayscale
+        img_gray = cv2.cvtColor(img_array_uint8, cv2.COLOR_RGB2GRAY) # Fallback to convert from RGB
 
     # 2. Gaussian Denoising
     img_denoised = cv2.GaussianBlur(img_gray, (5, 5), 0)
@@ -115,9 +116,9 @@ def custom_image_preprocessing(img_array):
     # 4. Normalization to [0, 1]
     img_normalized = img_clahe / 255.0
 
-    # Ensure the output has the correct channel dimension for Keras
-    if IMG_CHANNELS == 1:
-        img_normalized = np.expand_dims(img_normalized, axis=-1)
+    # Ensure the output has the correct channel dimension for Keras (H, W, 1)
+    # img_normalized is currently (H, W)
+    img_normalized = np.expand_dims(img_normalized, axis=-1) # Add channel dimension
 
     return img_normalized
 
@@ -145,7 +146,7 @@ def get_image_data_generators():
     train_generator = train_datagen.flow_from_directory(
         directory=os.path.join(PROCESSED_DATA_DIR, 'train'),
         target_size=(IMG_HEIGHT, IMG_WIDTH),
-        color_mode='rgb', # Read as RGB, then custom_preprocessing converts to grayscale
+        color_mode='grayscale', # <--- CHANGED THIS TO 'grayscale'
         batch_size=BATCH_SIZE,
         class_mode='binary',
         seed=RANDOM_SEED
@@ -154,7 +155,7 @@ def get_image_data_generators():
     validation_generator = val_test_datagen.flow_from_directory(
         directory=os.path.join(PROCESSED_DATA_DIR, 'val'),
         target_size=(IMG_HEIGHT, IMG_WIDTH),
-        color_mode='rgb',
+        color_mode='grayscale', # <--- CHANGED THIS TO 'grayscale'
         batch_size=BATCH_SIZE,
         class_mode='binary',
         seed=RANDOM_SEED
@@ -163,7 +164,7 @@ def get_image_data_generators():
     test_generator = val_test_datagen.flow_from_directory(
         directory=os.path.join(PROCESSED_DATA_DIR, 'test'),
         target_size=(IMG_HEIGHT, IMG_WIDTH),
-        color_mode='rgb',
+        color_mode='grayscale', # <--- CHANGED THIS TO 'grayscale'
         batch_size=BATCH_SIZE,
         class_mode='binary',
         shuffle=False,
