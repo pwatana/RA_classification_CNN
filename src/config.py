@@ -1,4 +1,3 @@
-# src/config.py
 import os
 
 # Base directory for the project
@@ -20,21 +19,12 @@ os.makedirs(MODELS_DIR, exist_ok=True)
 # Image parameters
 IMG_HEIGHT = 224
 IMG_WIDTH = 224
-IMG_CHANNELS = 3 # Keep 1 for now; will change to 3 for transfer learning later
-NUM_CLASSES = 3 # <--- CHANGED: Now 3 classes (Healthy, Mild RA, Severe RA)
+IMG_CHANNELS = 1 # <--- REVERTED: 1 channel for grayscale
+NUM_CLASSES = 2 # <--- REVERTED: 2 classes (RA, Healthy)
 
-# RA Classification Score Bins (for 3 classes)
-# scores < 50 => Healthy
-# scores 50-100 => Mild RA
-# scores > 100 => Severe RA
-RA_SCORE_BINS = {
-    'Healthy': {'max_score': 49.99},
-    'Mild RA': {'min_score': 50.0, 'max_score': 100.0},
-    'Severe RA': {'min_score': 100.01}
-}
-# Define class names in desired order for consistency (e.g., alphabetical or clinical progression)
-# ImageDataGenerator assigns indices alphabetically by default if not specified.
-CLASS_NAMES = ['Healthy', 'Mild RA', 'Severe RA'] # <--- IMPORTANT: Defines class order
+# RA Classification Threshold (For binary classification: score >= 50.0 is RA)
+RA_SCORE_THRESHOLD = 50.0 # <--- REVERTED: Single threshold for binary split
+# Removed RA_SCORE_BINS and CLASS_NAMES
 
 # Training parameters
 BATCH_SIZE = 32

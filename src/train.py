@@ -5,14 +5,15 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLRO
 import numpy as np
 from sklearn.utils.class_weight import compute_class_weight # Import for class weight calculation
 
-from config import MODELS_DIR, MODEL_NAME, EPOCHS, HISTORY_NAME, RANDOM_SEED, BATCH_SIZE, CLASS_NAMES # <--- Import CLASS_NAMES
+# <--- REVERTED: Import only variables relevant for binary classification
+from config import MODELS_DIR, MODEL_NAME, EPOCHS, HISTORY_NAME, RANDOM_SEED, BATCH_SIZE
 from data_loader import split_and_copy_data_from_csv, get_image_data_generators
-from model import build_cnn_model
+from model import build_cnn_model # <--- Ensure this builds the simple CNN
 
 def train_model():
     """
     Trains the CNN model using the prepared data generators,
-    incorporating class weights to handle imbalance in multi-class setting.
+    incorporating class weights to handle imbalance in binary classification.
     """
     print("Starting model training...")
 
@@ -28,26 +29,26 @@ def train_model():
 
     print("\n--- Class Distribution in Processed Data ---")
     for data_type, counts in class_distribution_counts.items():
+        # The data_loader prints counts for 'RA' and 'Healthy'
         counts_str = ", ".join([f"{name}={count}" for name, count in counts.items()])
         print(f"{data_type.capitalize()} set: {counts_str}")
 
     print(f"\nData Generators Ready: Train samples={train_generator.samples}, Val samples={validation_generator.samples}, Test samples={test_generator.samples}")
 
-    # 2. Calculate Class Weights for 3 classes
+    # 2. Calculate Class Weights for 2 classes
     print("\n--- Calculated Class Weights ---")
-    # ImageDataGenerator.classes provides the integer labels (0, 1, 2) for each image in order
-    labels_integer = train_generator.classes # This is a 1D array of integers corresponding to CLASS_NAMES order
+    # ImageDataGenerator.classes provides the integer labels (0 or 1) for each image in order
+    labels_integer = train_generator.classes # This is a 1D array of integers (0 for Healthy, 1 for RA)
 
-    # Compute weights inversely proportional to class frequencies
+    # Compute weights inversely proportional to class frequencies for 2 classes
     class_weights_array = compute_class_weight(
         class_weight='balanced',
-        classes=np.unique(labels_integer), # Get unique class indices (0, 1, 2)
+        classes=np.unique(labels_integer), # Get unique class indices (0, 1)
         y=labels_integer # Use the integer labels for computation
     )
-    # Map the weights to a dictionary where keys are class indices (0, 1, 2)
-    # The order of CLASS_NAMES in config.py is crucial for correct mapping.
-    class_weights = {train_generator.class_indices[name]: weight for name, weight in zip(CLASS_NAMES, class_weights_array)}
-
+    # Map the weights to a dictionary where keys are class indices (0, 1)
+    # train_generator.class_indices will be {'Healthy': 0, 'RA': 1}
+    class_weights = {train_generator.class_indices[name]: weight for name, weight in zip(train_generator.class_indices.keys(), class_weights_array)}
 
     print(f"Class Names and Indices: {train_generator.class_indices}")
     print(f"Calculated Class Weights: {class_weights}")
@@ -55,7 +56,7 @@ def train_model():
 
     # 3. Build Model
     print("\n--- Building Model ---")
-    model = build_cnn_model()
+    model = build_cnn_model() # This will build the simple CNN
     model.summary()
 
 
@@ -112,7 +113,6 @@ def train_model():
     # 7. Evaluate the Best Model on the Test Set
     print("\n--- Evaluating Best Model on Test Set ---")
     try:
-        # Use tf.keras.models.load_model which should work for TF 2.x
         best_model = tf.keras.models.load_model(model_checkpoint_path)
         print(f"Loaded best model from: {model_checkpoint_path}")
         loss, accuracy, precision, recall = best_model.evaluate(test_generator)
