@@ -1,10 +1,11 @@
+# src/model.py
 import tensorflow as tf
-from tensorflow.keras import layers, models # Use tensorflow.keras for this setup
+from tensorflow.keras import layers, models
 from config import IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS, NUM_CLASSES, LEARNING_RATE
 
 def build_cnn_model():
     """
-    Builds a Convolutional Neural Network model for binary classification of X-ray images.
+    Builds a Convolutional Neural Network model for multi-class classification (3 classes).
     """
     model = models.Sequential([
         # Convolutional Block 1
@@ -29,22 +30,19 @@ def build_cnn_model():
         layers.Dense(256, activation='relu'),
         layers.Dropout(0.5), # Dropout for regularization to prevent overfitting
 
-        # Output Layer
-        # Use 'sigmoid' activation for binary classification (NUM_CLASSES=2)
-        # The loss function will be 'binary_crossentropy' for this setup.
-        layers.Dense(1, activation='sigmoid') # Correct for binary classification with binary_crossentropy    
+        # Output Layer: CHANGED for 3-class classification
+        layers.Dense(NUM_CLASSES, activation='softmax') # <--- Changed units to NUM_CLASSES (3) and activation to 'softmax'
     ])
 
-    # Optimizer and Compilation
+    # Optimizer and Compilation: CHANGED loss for 3-class classification
     optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
     model.compile(optimizer=optimizer,
-                  loss='binary_crossentropy' if NUM_CLASSES == 2 else 'categorical_crossentropy',
-                  metrics=['accuracy', tf.keras.metrics.Precision(), tf.keras.metrics.Recall()])
+                  loss='categorical_crossentropy', # <--- Changed loss to 'categorical_crossentropy'
+                  metrics=['accuracy', tf.keras.metrics.Precision(), tf.keras.metrics.Recall()]) # Metrics remain
 
     return model
 
 if __name__ == '__main__':
-    # This block allows you to test the model definition independently.
     print("Building and summarizing the CNN model defined in model.py...")
     model = build_cnn_model()
     model.summary()
