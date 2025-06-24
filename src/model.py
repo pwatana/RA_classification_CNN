@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow.keras import layers, models
 from tensorflow.keras.applications import EfficientNetB0 # <--- Import the pre-trained model
 from tensorflow.keras.optimizers import Adam
-from src.config import IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS, NUM_CLASSES, LEARNING_RATE
+from config import IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS, NUM_CLASSES, LEARNING_RATE
 
 def build_cnn_model(): # Renamed to build_transfer_learning_model or keep build_cnn_model and update its content
     """

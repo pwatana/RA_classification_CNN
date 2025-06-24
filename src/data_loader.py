@@ -105,79 +105,94 @@ def split_and_copy_data_from_csv():
 
 def custom_image_preprocessing(img_array):
     """
-    Applies a series of preprocessing steps to an image array:
-    1. Grayscale conversion (if input is multi-channel, though color_mode='grayscale' helps)
+    Applies preprocessing steps to an image array:
+    1. Grayscale conversion (from original RGB input)
     2. Gaussian Denoising
     3. CLAHE (Contrast Limited Adaptive Histogram Equalization)
     4. Normalization to [0, 1]
+    5. Converts back to 3 channels if IMG_CHANNELS is 3.
     """
     img_array_uint8 = img_array.astype(np.uint8)
 
-    if len(img_array_uint8.shape) == 3 and img_array_uint8.shape[2] == 1:
-        img_gray = np.squeeze(img_array_uint8, axis=-1)
-    elif len(img_array_uint8.shape) == 2:
-        img_gray = img_array_uint8
-    else:
+    # Convert original RGB input to Grayscale for OpenCV processing
+    # (flow_from_directory with color_mode='rgb' will pass 3 channels here)
+    if len(img_array_uint8.shape) == 3 and img_array_uint8.shape[2] == 3:
         img_gray = cv2.cvtColor(img_array_uint8, cv2.COLOR_RGB2GRAY)
+    elif len(img_array_uint8.shape) == 3 and img_array_uint8.shape[2] == 1:
+        img_gray = np.squeeze(img_array_uint8, axis=-1) # Already grayscale with channel dim, squeeze
+    else: # Fallback for unexpected shapes or already 2D
+        img_gray = img_array_uint8
 
+
+    # 2. Gaussian Denoising
     img_denoised = cv2.GaussianBlur(img_gray, (5, 5), 0)
+
+    # 3. CLAHE (Contrast Limited Adaptive Histogram Equalization)
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     img_clahe = clahe.apply(img_denoised)
-    img_normalized = img_clahe / 255.0
-    # Ensure the output has the correct channel dimension for Keras (H, W, C)
-    if IMG_CHANNELS == 1:
-        img_normalized = np.expand_dims(img_normalized, axis=-1) # (H,W) -> (H,W,1)
-    elif IMG_CHANNELS == 3:
-        # Duplicate the grayscale channel 3 times to make it RGB-like for ImageNet models
-        img_normalized = np.stack([img_normalized, img_normalized, img_normalized], axis=-1) # (H,W) -> (H,W,3)
-    # The image generator's color_mode='grayscale' loads as (H,W,1), then squeezed to (H,W) for OpenCV.
-    # So img_normalized here is (H,W). The stack operation ensures it becomes (H,W,3).
 
-    return img_normalized # This line remains
+    # 4. Normalization to [0, 1]
+    img_normalized_2d = img_clahe / 255.0 # This is still (H,W)
+
+
+    # 5. Ensure the output has the correct channel dimension for Keras
+    if IMG_CHANNELS == 1:
+        img_final = np.expand_dims(img_normalized_2d, axis=-1) # (H,W) -> (H,W,1)
+    elif IMG_CHANNELS == 3:
+        # Duplicate the grayscale channel 3 times for RGB-like input for EfficientNetB0
+        img_final = np.stack([img_normalized_2d, img_normalized_2d, img_normalized_2d], axis=-1) # (H,W) -> (H,W,3)
+    else:
+        img_final = img_normalized_2d # Fallback
+
+    return img_final # Return the correctly shaped image
 
 
 def get_image_data_generators():
     """
     Creates and returns Keras ImageDataGenerators for training and validation/testing.
-    Now configured for 3 classes.
+    Now configured for 3 classes and RGB input for transfer learning.
     """
     train_datagen = ImageDataGenerator(
         rotation_range=20, width_shift_range=0.1, height_shift_range=0.1,
         shear_range=0.1, zoom_range=0.1, horizontal_flip=True, fill_mode='nearest',
         preprocessing_function=custom_image_preprocessing
     )
+
     val_test_datagen = ImageDataGenerator(
         preprocessing_function=custom_image_preprocessing
     )
 
-    # Note the change to class_mode='categorical' and target_names=CLASS_NAMES
     train_generator = train_datagen.flow_from_directory(
         directory=os.path.join(PROCESSED_DATA_DIR, 'train'),
-        target_size=(IMG_HEIGHT, IMG_WIDTH), color_mode='grayscale',
-        batch_size=BATCH_SIZE, class_mode='categorical', # <--- CHANGED: categorical
-        classes=CLASS_NAMES, # <--- IMPORTANT: Specify class names order
+        target_size=(IMG_HEIGHT, IMG_WIDTH),
+        color_mode='rgb', # <--- CHANGED THIS BACK TO 'rgb' for 3-channel input
+        batch_size=BATCH_SIZE, class_mode='categorical',
+        classes=CLASS_NAMES,
         seed=RANDOM_SEED
     )
 
     validation_generator = val_test_datagen.flow_from_directory(
         directory=os.path.join(PROCESSED_DATA_DIR, 'val'),
-        target_size=(IMG_HEIGHT, IMG_WIDTH), color_mode='grayscale',
-        batch_size=BATCH_SIZE, class_mode='categorical', # <--- CHANGED: categorical
-        classes=CLASS_NAMES, # <--- IMPORTANT: Specify class names order
+        target_size=(IMG_HEIGHT, IMG_WIDTH),
+        color_mode='rgb', # <--- CHANGED THIS BACK TO 'rgb'
+        batch_size=BATCH_SIZE, class_mode='categorical',
+        classes=CLASS_NAMES,
         seed=RANDOM_SEED
     )
 
     test_generator = val_test_datagen.flow_from_directory(
         directory=os.path.join(PROCESSED_DATA_DIR, 'test'),
-        target_size=(IMG_HEIGHT, IMG_WIDTH), color_mode='grayscale',
-        batch_size=BATCH_SIZE, class_mode='categorical', # <--- CHANGED: categorical
-        classes=CLASS_NAMES, # <--- IMPORTANT: Specify class names order
+        target_size=(IMG_HEIGHT, IMG_WIDTH),
+        color_mode='rgb', # <--- CHANGED THIS BACK TO 'rgb'
+        batch_size=BATCH_SIZE, class_mode='categorical',
+        classes=CLASS_NAMES,
         shuffle=False, seed=RANDOM_SEED
     )
 
     return train_generator, validation_generator, test_generator
 
 if __name__ == '__main__':
+    # ... (rest of your if __name__ == '__main__': block remains the same) ...
     print("Running data_loader.py as main script for testing...")
     try:
         class_distribution = split_and_copy_data_from_csv()
@@ -188,7 +203,7 @@ if __name__ == '__main__':
 
         train_gen, val_gen, test_gen = get_image_data_generators()
         print(f"\nData Generators Ready: Train samples={train_gen.samples}, Val samples={val_gen.samples}, Test samples={test_gen.samples}")
-        print(f"Class indices: {train_gen.class_indices}") # Should show {'Healthy': 0, 'Mild RA': 1, 'Severe RA': 2}
+        print(f"Class indices: {train_gen.class_indices}")
 
         print("\nVerifying image batch shape and type after preprocessing...")
         first_batch_images, first_batch_labels = next(train_gen)
