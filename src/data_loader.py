@@ -26,10 +26,10 @@ def prepare_data_directories():
 def split_and_copy_data_from_csv():
     """
     Reads exam_number and score_avg from data.csv, derives image filenames and
-    binary labels (RA/Healthy), splits, performs undersampling on the training set,
+    binary labels (RA/Healthy), splits, performs oversampling on the training set,
     and copies images to their respective processed directories.
     """
-    print("Splitting and copying data based on data.csv for 2 classes, with undersampling...")
+    print("Splitting and copying data based on data.csv for 2 classes, with oversampling...") # <--- Updated message
     prepare_data_directories()
 
     csv_path = os.path.join(RAW_DATA_DIR, 'data.csv')
@@ -66,8 +66,8 @@ def split_and_copy_data_from_csv():
         random_state=RANDOM_SEED, stratify=y_train_val
     )
 
-    # --- Undersampling of the Training Set (NEW SECTION) ---
-    print("Performing undersampling on the training set...")
+    # --- Oversampling of the Training Set (NEW SECTION) ---
+    print("Performing oversampling on the training set...")
     # Combine training images and labels into a DataFrame for easier manipulation
     train_df = pd.DataFrame({'image_path': X_train, 'label': y_train})
 
@@ -75,32 +75,32 @@ def split_and_copy_data_from_csv():
     df_majority = train_df[train_df.label == 'Healthy'] # Assuming 'Healthy' is the majority
     df_minority = train_df[train_df.label == 'RA']      # Assuming 'RA' is the minority
 
-    # Determine the size of the minority class in the training set
-    minority_class_size = len(df_minority)
+    # Determine the size of the majority class in the training set
+    majority_class_size = len(df_majority)
 
-    # Undersample the majority class (Healthy) to match the minority class size (RA)
-    df_majority_undersampled = resample(df_majority,
-                                       replace=False,    # Sample without replacement
-                                       n_samples=minority_class_size, # To match minority class size
+    # Oversample the minority class (RA) to match the majority class size (Healthy)
+    df_minority_oversampled = resample(df_minority,
+                                       replace=True,     # <--- Sample with replacement (creates duplicates)
+                                       n_samples=majority_class_size, # <--- To match majority class size
                                        random_state=RANDOM_SEED) # For reproducibility
 
-    # Combine the minority class with the undersampled majority class
-    df_undersampled_train = pd.concat([df_majority_undersampled, df_minority])
+    # Combine the oversampled minority class with the original majority class
+    df_oversampled_train = pd.concat([df_majority, df_minority_oversampled])
 
-    # Shuffle the combined (undersampled) training dataset to mix the samples
-    df_undersampled_train = df_undersampled_train.sample(frac=1, random_state=RANDOM_SEED).reset_index(drop=True)
+    # Shuffle the combined (oversampled) training dataset to mix the samples
+    df_oversampled_train = df_oversampled_train.sample(frac=1, random_state=RANDOM_SEED).reset_index(drop=True)
 
-    # Update X_train and y_train with the undersampled data
-    X_train_undersampled = df_undersampled_train['image_path'].tolist()
-    y_train_undersampled = df_undersampled_train['label'].tolist()
-    print(f"Undersampling complete. Training set size reduced from {len(X_train)} to {len(X_train_undersampled)} samples.")
-    print(f"  New Training set counts: RA={minority_class_size}, Healthy={minority_class_size}")
-    # --- End Undersampling Section ---
+    # Update X_train and y_train with the oversampled data
+    X_train_oversampled = df_oversampled_train['image_path'].tolist()
+    y_train_oversampled = df_oversampled_train['label'].tolist()
+    print(f"Oversampling complete. Training set size increased from {len(X_train)} to {len(X_train_oversampled)} samples.")
+    print(f"  New Training set counts: RA={majority_class_size}, Healthy={majority_class_size}")
+    # --- End Oversampling Section ---
 
 
-    # Now use the undersampled training data for the datasets dictionary
+    # Now use the oversampled training data for the datasets dictionary
     datasets = {
-        'train': (X_train_undersampled, y_train_undersampled), # <--- Use undersampled data
+        'train': (X_train_oversampled, y_train_oversampled), # <--- Use oversampled data
         'val': (X_val, y_val),
         'test': (X_test, y_test)
     }
