@@ -98,7 +98,10 @@ def train_model():
         validation_data=validation_generator,
         validation_steps=validation_generator.samples // validation_generator.batch_size,
         callbacks=callbacks,
-        class_weight=class_weights # <--- APPLY CLASS WEIGHTS HERE
+        class_weight=class_weights,
+        workers=1, 
+        use_multiprocessing=False, 
+        max_queue_size=5 # <--- APPLY CLASS WEIGHTS HERE
     )
 
     print("\nTraining complete.")
