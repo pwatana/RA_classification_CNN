@@ -6,9 +6,9 @@ import numpy as np
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.metrics import f1_score, confusion_matrix # Import for F1 and Specificity calculations
 
-from src.config import MODELS_DIR, MODEL_NAME, EPOCHS, HISTORY_NAME, RANDOM_SEED, BATCH_SIZE
-from src.data_loader import split_and_copy_data_from_csv, get_image_data_generators
-from src.model import build_cnn_model # Ensure this builds the simple CNN
+from config import MODELS_DIR, MODEL_NAME, EPOCHS, HISTORY_NAME, RANDOM_SEED, BATCH_SIZE
+from data_loader import split_and_copy_data_from_csv, get_image_data_generators
+from model import build_cnn_model # Ensure this builds the simple CNN
 
 def train_model(model_to_use=None):
     """

@@ -28,9 +28,9 @@ def prepare_data_directories():
 def split_and_copy_data_from_csv():
     """
     Reads exam_number and score_avg from data.csv, derives image filenames and
-    binary labels (RA/Healthy).
+    binary labels.
     Filters out unreadable image files and logs them.
-    Performs oversampling on the training set, and copies images.
+    Performs oversampling on the training set, and copies images with UNIQUE NAMES.
     """
     print("Splitting and copying data based on data.csv for 2 classes, with oversampling...")
     prepare_data_directories()
@@ -46,18 +46,16 @@ def split_and_copy_data_from_csv():
     if 'score_avg' not in df.columns:
         raise ValueError("Column 'score_avg' not found in data.csv. Please check your CSV header.")
 
-    # 1. Derive Image Filenames and Initial Labels
     df['image_filename'] = df['exam_number'].apply(lambda x: f"DX{x}.jpg")
     df['classification_label'] = df['score_avg'].apply(
         lambda score: 'RA' if score >= RA_SCORE_THRESHOLD else 'Healthy'
     )
 
-    # --- NEW: Filter out unreadable or truly missing image files before splitting ---
     print("Pre-filtering for unreadable or missing image files...")
     all_image_paths_filtered = []
     all_labels_filtered = []
     skipped_by_filter_count = 0
-    skipped_image_paths = [] # List to store paths of skipped images
+    skipped_image_paths = []
 
     for index, row in df.iterrows():
         fname = row['image_filename']
@@ -65,29 +63,24 @@ def split_and_copy_data_from_csv():
         full_path = os.path.join(RAW_DATA_DIR, fname)
 
         if not os.path.exists(full_path):
-            # print(f"Pre-filter Warning: Image file not found at {full_path}. Skipping from dataset.") # Can uncomment for debug
             skipped_by_filter_count += 1
             skipped_image_paths.append(full_path)
             continue
 
         try:
-            # Attempt to open the image with Pillow to check readability
             with Image.open(full_path) as img:
-                img.verify() # Verify file integrity
+                img.verify()
             all_image_paths_filtered.append(full_path)
             all_labels_filtered.append(label)
         except (UnidentifiedImageError, IOError, TimeoutError, OSError) as e:
-            # print(f"Pre-filter Warning: Cannot identify or read image file {full_path}. Skipping from dataset. Error: {e}") # Can uncomment for debug
             skipped_by_filter_count += 1
             skipped_image_paths.append(full_path)
         except Exception as e:
-            # print(f"Pre-filter Warning: Unexpected error reading {full_path}. Skipping. Error: {e}") # Can uncomment for debug
             skipped_by_filter_count += 1
             skipped_image_paths.append(full_path)
 
     if skipped_by_filter_count > 0:
         print(f"Pre-filtering complete. {skipped_by_filter_count} unreadable/missing images skipped from CSV entries.")
-        # Log skipped images to file
         log_file_path = os.path.join(MODELS_DIR, FILTERED_IMAGES_LOG)
         with open(log_file_path, 'w') as f:
             f.write(f"Total unreadable/missing images skipped: {skipped_by_filter_count}\n\n")
@@ -100,16 +93,12 @@ def split_and_copy_data_from_csv():
 
     if not all_image_paths_filtered:
         raise ValueError("No readable image files found after pre-filtering. Cannot proceed.")
-    # --- End NEW filtering section ---
 
 
-    # Use the filtered_image_paths and filtered_labels for splitting
-    # First split: train+val vs test (stratified by classification_label)
     X_train_val, X_test, y_train_val, y_test = train_test_split(
         all_image_paths_filtered, all_labels_filtered, test_size=TEST_SPLIT, random_state=RANDOM_SEED, stratify=all_labels_filtered
     )
 
-    # Second split: train vs val from train_val set (stratified by classification_label)
     X_train, X_val, y_train, y_val = train_test_split(
         X_train_val, y_train_val, test_size=VALIDATION_SPLIT / (1 - TEST_SPLIT),
         random_state=RANDOM_SEED, stratify=y_train_val
@@ -119,32 +108,28 @@ def split_and_copy_data_from_csv():
     print("Performing oversampling on the training set...")
     train_df = pd.DataFrame({'image_path': X_train, 'label': y_train})
 
-    df_majority = train_df[train_df.label == 'Healthy'] # Assuming 'Healthy' is the majority
-    df_minority = train_df[train_df.label == 'RA']      # Assuming 'RA' is the minority
+    df_majority = train_df[train_df.label == 'Healthy']
+    df_minority = train_df[train_df.label == 'RA']
 
     majority_class_size = len(df_majority)
 
     df_minority_oversampled = resample(df_minority,
-                                       replace=True,     # Sample with replacement (creates duplicates)
-                                       n_samples=majority_class_size, # To match majority class size
-                                       random_state=RANDOM_SEED) # For reproducibility
+                                       replace=True,
+                                       n_samples=majority_class_size,
+                                       random_state=RANDOM_SEED)
 
     df_oversampled_train = pd.concat([df_majority, df_minority_oversampled])
-
-    # Shuffle the combined (oversampled) training dataset to mix the samples
     df_oversampled_train = df_oversampled_train.sample(frac=1, random_state=RANDOM_SEED).reset_index(drop=True)
 
-    # Update X_train and y_train with the oversampled data
     X_train_oversampled = df_oversampled_train['image_path'].tolist()
     y_train_oversampled = df_oversampled_train['label'].tolist()
     print(f"Oversampling complete. Training set size increased from {len(X_train)} to {len(X_train_oversampled)} samples.")
     print(f"  New Training set counts: RA={len(df_minority_oversampled)}, Healthy={len(df_majority)}")
-    # --- End Oversampling Section ---
 
 
     # Now use the oversampled training data for the datasets dictionary
     datasets = {
-        'train': (X_train_oversampled, y_train_oversampled), # Use oversampled data
+        'train': (X_train_oversampled, y_train_oversampled),
         'val': (X_val, y_val),
         'test': (X_test, y_test)
     }
@@ -158,13 +143,20 @@ def split_and_copy_data_from_csv():
             class_name = labels_list[i]
             dest_dir = os.path.join(PROCESSED_DATA_DIR, data_type, class_name)
             os.makedirs(dest_dir, exist_ok=True)
+
+            # <--- CRUCIAL CHANGE: Create unique filename for duplicated images
+            original_filename_base, original_filename_ext = os.path.splitext(os.path.basename(img_path))
+            # Append a unique ID to ensure duplicates are seen as distinct files by flow_from_directory
+            unique_dest_filename = f"{original_filename_base}_copy_{uuid.uuid4().hex}{original_filename_ext}"
+            unique_dest_path = os.path.join(dest_dir, unique_dest_filename)
+
             try:
-                shutil.copy(img_path, dest_dir)
+                shutil.copy(img_path, unique_dest_path) # <--- Copy to unique path
                 current_type_counts[class_name] += 1
             except FileNotFoundError:
-                # This should ideally not happen if pre-filtering works correctly,
-                # but left as a safeguard.
                 print(f"Warning: Image file not found at {img_path}. Skipping during copy phase.")
+            except Exception as e:
+                print(f"Warning: Error copying {img_path} to {unique_dest_path}. Skipping. Error: {e}")
         class_counts[data_type] = current_type_counts
         print(f"  {data_type.capitalize()} set counts: RA={current_type_counts['RA']}, Healthy={current_type_counts['Healthy']}")
 
