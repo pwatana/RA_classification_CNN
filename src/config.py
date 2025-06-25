@@ -26,6 +26,9 @@ NUM_CLASSES = 2 # <--- REVERTED: 2 classes (RA, Healthy)
 RA_SCORE_THRESHOLD = 50.0 # <--- REVERTED: Single threshold for binary split
 # Removed RA_SCORE_BINS and CLASS_NAMES
 
+# Define class names in desired order for consistency (ImageDataGenerator infers alphabetically by default)
+CLASS_NAMES = ['Healthy', 'RA'] # <--- ADDED BACK FOR CONSISTENCY
+
 # Training parameters
 BATCH_SIZE = 32
 EPOCHS = 50 # Adjust as needed
