@@ -8,6 +8,7 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import cv2 # Import OpenCV for advanced image processing
 from sklearn.utils import resample # Import for resampling
 from PIL import Image, UnidentifiedImageError # Import for image validation
+import uuid # Import for generating unique filenames
 
 
 from config import RAW_DATA_DIR, PROCESSED_DATA_DIR, IMG_HEIGHT, IMG_WIDTH, BATCH_SIZE, RANDOM_SEED, VALIDATION_SPLIT, TEST_SPLIT, IMG_CHANNELS, RA_SCORE_THRESHOLD, MODELS_DIR, FILTERED_IMAGES_LOG

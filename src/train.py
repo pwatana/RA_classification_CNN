@@ -49,6 +49,18 @@ def train_model(model_to_use=None):
     print(f"Class Names and Indices: {train_generator.class_indices}")
     print(f"Calculated Class Weights: {class_weights}")
 
+    # <--- NEW: Manually override class_weights to make model more conservative
+    # Healthy (0) gets weight 1.0, RA (1) gets weight 0.8 (less penalty for missing RA)
+    # This encourages the model to be more careful about predicting RA.
+    print("\n--- Adjusting Class Weights Manually for Conservative RA Prediction ---")
+    adjusted_class_weights = {
+        train_generator.class_indices['Healthy']: 1.0, # Maintain penalty for Healthy
+        train_generator.class_indices['RA']: 0.8      # <--- Reduce penalty for RA misclassification
+    }
+    class_weights = adjusted_class_weights # Use the adjusted weights
+
+    print(f"Adjusted Class Weights: {class_weights}")
+    
     # 3. Use provided model or build a new one
     model = model_to_use
     if model is None:
