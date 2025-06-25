@@ -35,7 +35,7 @@ def build_cnn_model():
     ])
 
     # Optimizer and Compilation: REVERTED loss for binary classification
-    optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
+    optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE, clipnorm=1.0) # Clipping gradients to prevent exploding gradients
     model.compile(optimizer=optimizer,
                   loss='binary_crossentropy', # <--- REVERTED: 'binary_crossentropy'
                   metrics=['accuracy', tf.keras.metrics.Precision(), tf.keras.metrics.Recall()]) # Metrics remain

@@ -26,9 +26,10 @@ def prepare_data_directories():
 def split_and_copy_data_from_csv():
     """
     Reads exam_number and score_avg from data.csv, derives image filenames and
-    binary labels (RA/Healthy), splits, and copies images.
+    binary labels (RA/Healthy), splits, performs undersampling on the training set,
+    and copies images to their respective processed directories.
     """
-    print("Splitting and copying data based on data.csv for 2 classes...") # <--- Updated message
+    print("Splitting and copying data based on data.csv for 2 classes, with undersampling...")
     prepare_data_directories()
 
     csv_path = os.path.join(RAW_DATA_DIR, 'data.csv')
@@ -43,9 +44,6 @@ def split_and_copy_data_from_csv():
         raise ValueError("Column 'score_avg' not found in data.csv. Please check your CSV header.")
 
     df['image_filename'] = df['exam_number'].apply(lambda x: f"DX{x}.jpg")
-
-    # 2. Derive Binary Labels (RA or Healthy) based on RA_SCORE_THRESHOLD
-    # <--- REVERTED: Simple binary assignment
     df['classification_label'] = df['score_avg'].apply(
         lambda score: 'RA' if score >= RA_SCORE_THRESHOLD else 'Healthy'
     )
@@ -55,17 +53,54 @@ def split_and_copy_data_from_csv():
 
     all_image_paths = [os.path.join(RAW_DATA_DIR, fname) for fname in image_filenames]
 
+    # First split: train+val vs test (stratified by classification_label)
+    # The TEST_SPLIT will contain original class distribution
     X_train_val, X_test, y_train_val, y_test = train_test_split(
         all_image_paths, labels, test_size=TEST_SPLIT, random_state=RANDOM_SEED, stratify=labels
     )
 
+    # Second split: train vs val from train_val set (stratified by classification_label)
+    # The VALIDATION_SPLIT will contain original class distribution
     X_train, X_val, y_train, y_val = train_test_split(
-        X_train_val, y_train_val, test_size=VALIDATION_SPLIT / (1 - TEST_SPLIT), # Corrected TEST_TEST_SPLIT typo
+        X_train_val, y_train_val, test_size=VALIDATION_SPLIT / (1 - TEST_SPLIT),
         random_state=RANDOM_SEED, stratify=y_train_val
     )
 
+    # --- Undersampling of the Training Set (NEW SECTION) ---
+    print("Performing undersampling on the training set...")
+    # Combine training images and labels into a DataFrame for easier manipulation
+    train_df = pd.DataFrame({'image_path': X_train, 'label': y_train})
+
+    # Separate majority and minority classes within the training set
+    df_majority = train_df[train_df.label == 'Healthy'] # Assuming 'Healthy' is the majority
+    df_minority = train_df[train_df.label == 'RA']      # Assuming 'RA' is the minority
+
+    # Determine the size of the minority class in the training set
+    minority_class_size = len(df_minority)
+
+    # Undersample the majority class (Healthy) to match the minority class size (RA)
+    df_majority_undersampled = resample(df_majority,
+                                       replace=False,    # Sample without replacement
+                                       n_samples=minority_class_size, # To match minority class size
+                                       random_state=RANDOM_SEED) # For reproducibility
+
+    # Combine the minority class with the undersampled majority class
+    df_undersampled_train = pd.concat([df_majority_undersampled, df_minority])
+
+    # Shuffle the combined (undersampled) training dataset to mix the samples
+    df_undersampled_train = df_undersampled_train.sample(frac=1, random_state=RANDOM_SEED).reset_index(drop=True)
+
+    # Update X_train and y_train with the undersampled data
+    X_train_undersampled = df_undersampled_train['image_path'].tolist()
+    y_train_undersampled = df_undersampled_train['label'].tolist()
+    print(f"Undersampling complete. Training set size reduced from {len(X_train)} to {len(X_train_undersampled)} samples.")
+    print(f"  New Training set counts: RA={minority_class_size}, Healthy={minority_class_size}")
+    # --- End Undersampling Section ---
+
+
+    # Now use the undersampled training data for the datasets dictionary
     datasets = {
-        'train': (X_train, y_train),
+        'train': (X_train_undersampled, y_train_undersampled), # <--- Use undersampled data
         'val': (X_val, y_val),
         'test': (X_test, y_test)
     }
@@ -74,7 +109,6 @@ def split_and_copy_data_from_csv():
 
     for data_type, (images, labels_list) in datasets.items():
         print(f"Copying {data_type} images...")
-        # <--- REVERTED: Only 2 class counts
         current_type_counts = {'RA': 0, 'Healthy': 0}
         for i, img_path in enumerate(images):
             class_name = labels_list[i]
@@ -86,7 +120,6 @@ def split_and_copy_data_from_csv():
             except FileNotFoundError:
                 print(f"Warning: Image file not found at {img_path}. Skipping.")
         class_counts[data_type] = current_type_counts
-        # <--- Updated print for 2 classes
         print(f"  {data_type.capitalize()} set counts: RA={current_type_counts['RA']}, Healthy={current_type_counts['Healthy']}")
 
 
