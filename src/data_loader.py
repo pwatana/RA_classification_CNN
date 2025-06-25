@@ -6,9 +6,11 @@ import tensorflow as tf
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import cv2 # Import OpenCV for advanced image processing
-from sklearn.utils import resample # Import for undersampling
+from sklearn.utils import resample # Import for resampling
+from PIL import Image, UnidentifiedImageError # Import for image validation
 
-from config import RAW_DATA_DIR, PROCESSED_DATA_DIR, IMG_HEIGHT, IMG_WIDTH, BATCH_SIZE, RANDOM_SEED, VALIDATION_SPLIT, TEST_SPLIT, IMG_CHANNELS, RA_SCORE_THRESHOLD
+
+from src.config import RAW_DATA_DIR, PROCESSED_DATA_DIR, IMG_HEIGHT, IMG_WIDTH, BATCH_SIZE, RANDOM_SEED, VALIDATION_SPLIT, TEST_SPLIT, IMG_CHANNELS, RA_SCORE_THRESHOLD
 
 
 def prepare_data_directories():
@@ -26,10 +28,11 @@ def prepare_data_directories():
 def split_and_copy_data_from_csv():
     """
     Reads exam_number and score_avg from data.csv, derives image filenames and
-    binary labels (RA/Healthy), splits, performs oversampling on the training set,
-    and copies images to their respective processed directories.
+    binary labels (RA/Healthy).
+    Filters out unreadable image files.
+    Performs oversampling on the training set, and copies images.
     """
-    print("Splitting and copying data based on data.csv for 2 classes, with oversampling...") # <--- Updated message
+    print("Splitting and copying data based on data.csv for 2 classes, with oversampling...")
     prepare_data_directories()
 
     csv_path = os.path.join(RAW_DATA_DIR, 'data.csv')
@@ -43,64 +46,92 @@ def split_and_copy_data_from_csv():
     if 'score_avg' not in df.columns:
         raise ValueError("Column 'score_avg' not found in data.csv. Please check your CSV header.")
 
+    # 1. Derive Image Filenames and Initial Labels
     df['image_filename'] = df['exam_number'].apply(lambda x: f"DX{x}.jpg")
     df['classification_label'] = df['score_avg'].apply(
         lambda score: 'RA' if score >= RA_SCORE_THRESHOLD else 'Healthy'
     )
 
-    image_filenames = df['image_filename'].tolist()
-    labels = df['classification_label'].tolist()
+    # --- NEW: Filter out unreadable or truly missing image files before splitting ---
+    print("Pre-filtering for unreadable or missing image files...")
+    all_image_paths_filtered = []
+    all_labels_filtered = []
+    skipped_by_filter_count = 0
 
-    all_image_paths = [os.path.join(RAW_DATA_DIR, fname) for fname in image_filenames]
+    for index, row in df.iterrows():
+        fname = row['image_filename']
+        label = row['classification_label']
+        full_path = os.path.join(RAW_DATA_DIR, fname)
 
+        if not os.path.exists(full_path):
+            # print(f"Pre-filter Warning: Image file not found at {full_path}. Skipping from dataset.") # Can uncomment for debug
+            skipped_by_filter_count += 1
+            continue # Skip to next row if file doesn't exist
+
+        try:
+            # Attempt to open the image with Pillow to check readability
+            with Image.open(full_path) as img:
+                img.verify() # Verify file integrity
+            all_image_paths_filtered.append(full_path)
+            all_labels_filtered.append(label)
+        except (UnidentifiedImageError, IOError, SyntaxError) as e:
+            # print(f"Pre-filter Warning: Cannot identify or read image file {full_path}. Skipping from dataset. Error: {e}") # Can uncomment for debug
+            skipped_by_filter_count += 1
+        except Exception as e:
+            # print(f"Pre-filter Warning: Unexpected error reading {full_path}. Skipping. Error: {e}") # Can uncomment for debug
+            skipped_by_filter_count += 1
+
+    if skipped_by_filter_count > 0:
+        print(f"Pre-filtering complete. {skipped_by_filter_count} unreadable/missing images skipped from CSV entries.")
+    else:
+        print("Pre-filtering complete. All images found and readable.")
+
+    if not all_image_paths_filtered:
+        raise ValueError("No readable image files found after pre-filtering. Cannot proceed.")
+    # --- End NEW filtering section ---
+
+
+    # Use the filtered_image_paths and filtered_labels for splitting
     # First split: train+val vs test (stratified by classification_label)
-    # The TEST_SPLIT will contain original class distribution
     X_train_val, X_test, y_train_val, y_test = train_test_split(
-        all_image_paths, labels, test_size=TEST_SPLIT, random_state=RANDOM_SEED, stratify=labels
+        all_image_paths_filtered, all_labels_filtered, test_size=TEST_SPLIT, random_state=RANDOM_SEED, stratify=all_labels_filtered
     )
 
     # Second split: train vs val from train_val set (stratified by classification_label)
-    # The VALIDATION_SPLIT will contain original class distribution
     X_train, X_val, y_train, y_val = train_test_split(
         X_train_val, y_train_val, test_size=VALIDATION_SPLIT / (1 - TEST_SPLIT),
         random_state=RANDOM_SEED, stratify=y_train_val
     )
 
-    # --- Oversampling of the Training Set (NEW SECTION) ---
+    # --- Oversampling of the Training Set ---
     print("Performing oversampling on the training set...")
-    # Combine training images and labels into a DataFrame for easier manipulation
     train_df = pd.DataFrame({'image_path': X_train, 'label': y_train})
 
-    # Separate majority and minority classes within the training set
     df_majority = train_df[train_df.label == 'Healthy'] # Assuming 'Healthy' is the majority
     df_minority = train_df[train_df.label == 'RA']      # Assuming 'RA' is the minority
 
-    # Determine the size of the majority class in the training set
     majority_class_size = len(df_majority)
 
-    # Oversample the minority class (RA) to match the majority class size (Healthy)
     df_minority_oversampled = resample(df_minority,
-                                       replace=True,     # <--- Sample with replacement (creates duplicates)
-                                       n_samples=majority_class_size, # <--- To match majority class size
+                                       replace=True,     # Sample with replacement (creates duplicates)
+                                       n_samples=majority_class_size, # To match majority class size
                                        random_state=RANDOM_SEED) # For reproducibility
 
-    # Combine the oversampled minority class with the original majority class
     df_oversampled_train = pd.concat([df_majority, df_minority_oversampled])
 
     # Shuffle the combined (oversampled) training dataset to mix the samples
     df_oversampled_train = df_oversampled_train.sample(frac=1, random_state=RANDOM_SEED).reset_index(drop=True)
 
-    # Update X_train and y_train with the oversampled data
     X_train_oversampled = df_oversampled_train['image_path'].tolist()
     y_train_oversampled = df_oversampled_train['label'].tolist()
     print(f"Oversampling complete. Training set size increased from {len(X_train)} to {len(X_train_oversampled)} samples.")
-    print(f"  New Training set counts: RA={majority_class_size}, Healthy={majority_class_size}")
+    print(f"  New Training set counts: RA={len(df_minority_oversampled)}, Healthy={len(df_majority)}")
     # --- End Oversampling Section ---
 
 
     # Now use the oversampled training data for the datasets dictionary
     datasets = {
-        'train': (X_train_oversampled, y_train_oversampled), # <--- Use oversampled data
+        'train': (X_train_oversampled, y_train_oversampled), # Use oversampled data
         'val': (X_val, y_val),
         'test': (X_test, y_test)
     }
@@ -118,7 +149,9 @@ def split_and_copy_data_from_csv():
                 shutil.copy(img_path, dest_dir)
                 current_type_counts[class_name] += 1
             except FileNotFoundError:
-                print(f"Warning: Image file not found at {img_path}. Skipping.")
+                # This should ideally not happen if pre-filtering works correctly,
+                # but left as a safeguard.
+                print(f"Warning: Image file not found at {img_path}. Skipping during copy phase.")
         class_counts[data_type] = current_type_counts
         print(f"  {data_type.capitalize()} set counts: RA={current_type_counts['RA']}, Healthy={current_type_counts['Healthy']}")
 
