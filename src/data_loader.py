@@ -10,7 +10,7 @@ from sklearn.utils import resample # Import for resampling
 from PIL import Image, UnidentifiedImageError # Import for image validation
 
 
-from config import RAW_DATA_DIR, PROCESSED_DATA_DIR, IMG_HEIGHT, IMG_WIDTH, BATCH_SIZE, RANDOM_SEED, VALIDATION_SPLIT, TEST_SPLIT, IMG_CHANNELS, RA_SCORE_THRESHOLD
+from src.config import RAW_DATA_DIR, PROCESSED_DATA_DIR, IMG_HEIGHT, IMG_WIDTH, BATCH_SIZE, RANDOM_SEED, VALIDATION_SPLIT, TEST_SPLIT, IMG_CHANNELS, RA_SCORE_THRESHOLD, MODELS_DIR, FILTERED_IMAGES_LOG
 
 
 def prepare_data_directories():
@@ -29,7 +29,7 @@ def split_and_copy_data_from_csv():
     """
     Reads exam_number and score_avg from data.csv, derives image filenames and
     binary labels (RA/Healthy).
-    Filters out unreadable image files.
+    Filters out unreadable image files and logs them.
     Performs oversampling on the training set, and copies images.
     """
     print("Splitting and copying data based on data.csv for 2 classes, with oversampling...")
@@ -57,6 +57,7 @@ def split_and_copy_data_from_csv():
     all_image_paths_filtered = []
     all_labels_filtered = []
     skipped_by_filter_count = 0
+    skipped_image_paths = [] # List to store paths of skipped images
 
     for index, row in df.iterrows():
         fname = row['image_filename']
@@ -66,7 +67,8 @@ def split_and_copy_data_from_csv():
         if not os.path.exists(full_path):
             # print(f"Pre-filter Warning: Image file not found at {full_path}. Skipping from dataset.") # Can uncomment for debug
             skipped_by_filter_count += 1
-            continue # Skip to next row if file doesn't exist
+            skipped_image_paths.append(full_path)
+            continue
 
         try:
             # Attempt to open the image with Pillow to check readability
@@ -74,15 +76,25 @@ def split_and_copy_data_from_csv():
                 img.verify() # Verify file integrity
             all_image_paths_filtered.append(full_path)
             all_labels_filtered.append(label)
-        except (UnidentifiedImageError, IOError, SyntaxError) as e:
+        except (UnidentifiedImageError, IOError, TimeoutError, OSError) as e:
             # print(f"Pre-filter Warning: Cannot identify or read image file {full_path}. Skipping from dataset. Error: {e}") # Can uncomment for debug
             skipped_by_filter_count += 1
+            skipped_image_paths.append(full_path)
         except Exception as e:
             # print(f"Pre-filter Warning: Unexpected error reading {full_path}. Skipping. Error: {e}") # Can uncomment for debug
             skipped_by_filter_count += 1
+            skipped_image_paths.append(full_path)
 
     if skipped_by_filter_count > 0:
         print(f"Pre-filtering complete. {skipped_by_filter_count} unreadable/missing images skipped from CSV entries.")
+        # Log skipped images to file
+        log_file_path = os.path.join(MODELS_DIR, FILTERED_IMAGES_LOG)
+        with open(log_file_path, 'w') as f:
+            f.write(f"Total unreadable/missing images skipped: {skipped_by_filter_count}\n\n")
+            f.write("List of skipped image paths:\n")
+            for path in skipped_image_paths:
+                f.write(f"{path}\n")
+        print(f"Details of skipped images logged to: {log_file_path}")
     else:
         print("Pre-filtering complete. All images found and readable.")
 
@@ -122,6 +134,7 @@ def split_and_copy_data_from_csv():
     # Shuffle the combined (oversampled) training dataset to mix the samples
     df_oversampled_train = df_oversampled_train.sample(frac=1, random_state=RANDOM_SEED).reset_index(drop=True)
 
+    # Update X_train and y_train with the oversampled data
     X_train_oversampled = df_oversampled_train['image_path'].tolist()
     y_train_oversampled = df_oversampled_train['label'].tolist()
     print(f"Oversampling complete. Training set size increased from {len(X_train)} to {len(X_train_oversampled)} samples.")
@@ -258,7 +271,7 @@ if __name__ == '__main__':
         print(f"Data type of image batch: {first_batch_labels.dtype}") # Check label dtype
         print(f"Pixel min value: {first_batch_images.min()}, max value: {first_batch_images.max()}")
         if first_batch_images.shape[-1] != IMG_CHANNELS:
-            print(f"Warning: Expected {IMG_CHANNELS} channel(s) but got {first_batch_images.shape[-1]}. Check IMG_CHANNELS in config.py.")
+            print(f"Warning: Expected {IMG_CHANNELS} channel(s) but got {first_batch_labels.shape[-1]}. Check IMG_CHANNELS in config.py.")
 
     except FileNotFoundError as e:
         print(f"Error: {e}")

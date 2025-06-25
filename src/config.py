@@ -40,3 +40,4 @@ RANDOM_SEED = 42
 # Model parameters
 MODEL_NAME = 'ra_classifier_cnn.h5'
 HISTORY_NAME = 'training_history.csv'
+FILTERED_IMAGES_LOG = 'filtered_images.log' # <--- NEW: Log file for skipped images
