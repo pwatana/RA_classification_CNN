@@ -10,7 +10,7 @@ from sklearn.utils import resample # Import for resampling
 from PIL import Image, UnidentifiedImageError # Import for image validation
 
 
-from src.config import RAW_DATA_DIR, PROCESSED_DATA_DIR, IMG_HEIGHT, IMG_WIDTH, BATCH_SIZE, RANDOM_SEED, VALIDATION_SPLIT, TEST_SPLIT, IMG_CHANNELS, RA_SCORE_THRESHOLD, MODELS_DIR, FILTERED_IMAGES_LOG
+from config import RAW_DATA_DIR, PROCESSED_DATA_DIR, IMG_HEIGHT, IMG_WIDTH, BATCH_SIZE, RANDOM_SEED, VALIDATION_SPLIT, TEST_SPLIT, IMG_CHANNELS, RA_SCORE_THRESHOLD, MODELS_DIR, FILTERED_IMAGES_LOG
 
 
 def prepare_data_directories():
