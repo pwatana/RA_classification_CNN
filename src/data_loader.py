@@ -6,8 +6,8 @@ import tensorflow as tf
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import cv2 # Import OpenCV for advanced image processing
+from sklearn.utils import resample # Import for undersampling
 
-# <--- REVERTED: Import only variables relevant for binary classification
 from config import RAW_DATA_DIR, PROCESSED_DATA_DIR, IMG_HEIGHT, IMG_WIDTH, BATCH_SIZE, RANDOM_SEED, VALIDATION_SPLIT, TEST_SPLIT, IMG_CHANNELS, RA_SCORE_THRESHOLD
 
 
@@ -17,7 +17,7 @@ def prepare_data_directories():
     Now handles 2 class subdirectories: RA, Healthy.
     """
     for sub_dir in ['train', 'val', 'test']:
-        for class_dir_name in ['RA', 'Healthy']: # <--- REVERTED: Only 2 class subdirectories
+        for class_dir_name in ['RA', 'Healthy']: # Only 2 class subdirectories
             path = os.path.join(PROCESSED_DATA_DIR, sub_dir, class_dir_name)
             if os.path.exists(path):
                 shutil.rmtree(path)
@@ -129,7 +129,7 @@ def split_and_copy_data_from_csv():
 
 def custom_image_preprocessing(img_array):
     """
-    Applies a series of preprocessing steps to an image array, ensuring 1 output channel.
+    Applies a series of preprocessing steps to an image array:
     1. Grayscale conversion (from original RGB input if needed)
     2. Gaussian Denoising
     3. CLAHE (Contrast Limited Adaptive Histogram Equalization)
@@ -157,6 +157,7 @@ def custom_image_preprocessing(img_array):
     # 4. Normalization to [0, 1]
     img_normalized_2d = img_clahe / 255.0 # This is (H,W)
 
+
     # 5. Ensure the output has 1 channel for Keras (H, W, 1)
     img_final = np.expand_dims(img_normalized_2d, axis=-1) # (H,W) -> (H,W,1)
 
@@ -178,28 +179,28 @@ def get_image_data_generators():
         preprocessing_function=custom_image_preprocessing
     )
 
-    # <--- REVERTED: color_mode='grayscale' and class_mode='binary'
+    # REVERTED: color_mode='grayscale' and class_mode='binary'
     train_generator = train_datagen.flow_from_directory(
         directory=os.path.join(PROCESSED_DATA_DIR, 'train'),
         target_size=(IMG_HEIGHT, IMG_WIDTH),
-        color_mode='grayscale', # <--- REVERTED
-        batch_size=BATCH_SIZE, class_mode='binary', # <--- REVERTED
+        color_mode='grayscale', # REVERTED
+        batch_size=BATCH_SIZE, class_mode='binary', # REVERTED
         seed=RANDOM_SEED
     )
 
     validation_generator = val_test_datagen.flow_from_directory(
         directory=os.path.join(PROCESSED_DATA_DIR, 'val'),
         target_size=(IMG_HEIGHT, IMG_WIDTH),
-        color_mode='grayscale', # <--- REVERTED
-        batch_size=BATCH_SIZE, class_mode='binary', # <--- REVERTED
+        color_mode='grayscale', # REVERTED
+        batch_size=BATCH_SIZE, class_mode='binary', # REVERTED
         seed=RANDOM_SEED
     )
 
     test_generator = val_test_datagen.flow_from_directory(
         directory=os.path.join(PROCESSED_DATA_DIR, 'test'),
         target_size=(IMG_HEIGHT, IMG_WIDTH),
-        color_mode='grayscale', # <--- REVERTED
-        batch_size=BATCH_SIZE, class_mode='binary', # <--- REVERTED
+        color_mode='grayscale', # REVERTED
+        batch_size=BATCH_SIZE, class_mode='binary', # REVERTED
         shuffle=False, seed=RANDOM_SEED
     )
 
@@ -221,7 +222,7 @@ if __name__ == '__main__':
         print("\nVerifying image batch shape and type after preprocessing...")
         first_batch_images, first_batch_labels = next(train_gen)
         print(f"Shape of image batch: {first_batch_images.shape}")
-        print(f"Data type of image batch: {first_batch_labels.dtype}")
+        print(f"Data type of image batch: {first_batch_labels.dtype}") # Check label dtype
         print(f"Pixel min value: {first_batch_images.min()}, max value: {first_batch_images.max()}")
         if first_batch_images.shape[-1] != IMG_CHANNELS:
             print(f"Warning: Expected {IMG_CHANNELS} channel(s) but got {first_batch_images.shape[-1]}. Check IMG_CHANNELS in config.py.")
