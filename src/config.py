@@ -30,7 +30,7 @@ RA_SCORE_THRESHOLD = 50.0 # <--- REVERTED: Single threshold for binary split
 CLASS_NAMES = ['Healthy', 'RA'] # <--- ADDED BACK FOR CONSISTENCY
 
 # Training parameters
-BATCH_SIZE = 32
+BATCH_SIZE = 16
 EPOCHS = 50 # Adjust as needed
 LEARNING_RATE = 0.001
 VALIDATION_SPLIT = 0.2
