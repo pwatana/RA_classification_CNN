@@ -216,14 +216,11 @@ def get_image_data_generators():
     Now configured for 2 classes and grayscale input.
     """
     train_datagen = ImageDataGenerator(
-        rotation_range=20, width_shift_range=0.1, height_shift_range=0.1,
-        shear_range=0.1, zoom_range=0.1, horizontal_flip=True, fill_mode='nearest',
-        preprocessing_function=custom_image_preprocessing
+        rescale=1./255,  
+        horizontal_flip=True  
     )
-
-    val_test_datagen = ImageDataGenerator(
-        preprocessing_function=custom_image_preprocessing
-    )
+    
+    val_test_datagen = ImageDataGenerator(rescale=1./255)
 
     # REVERTED: color_mode='grayscale' and class_mode='binary'
     train_generator = train_datagen.flow_from_directory(
