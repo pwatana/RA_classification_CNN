@@ -4,7 +4,7 @@ from tensorflow.keras.applications import EfficientNetB0 # Import the pre-traine
 from tensorflow.keras.optimizers import Adam # Import Adam optimizer
 
 # <--- IMPORTANT: Import from config_transfer.py
-from src.config_transfer import IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS, NUM_CLASSES, LEARNING_RATE
+from config_transfer import IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS, NUM_CLASSES, LEARNING_RATE
 
 def build_transfer_learning_model():
     """

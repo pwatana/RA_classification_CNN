@@ -8,10 +8,10 @@ from sklearn.metrics import f1_score, confusion_matrix # Import for F1 and Speci
 import traceback # For printing full tracebacks
 
 # <--- IMPORTANT: Import from config_transfer.py
-from src.config_transfer import MODELS_DIR, MODEL_NAME, EPOCHS, HISTORY_NAME, RANDOM_SEED, BATCH_SIZE
+from config_transfer import MODELS_DIR, MODEL_NAME, EPOCHS, HISTORY_NAME, RANDOM_SEED, BATCH_SIZE
 # <--- IMPORTANT: Import from data_loader_transfer.py and model_transfer.py
-from src.data_loader_transfer import split_and_copy_data_from_csv, get_image_data_generators
-from src.model_transfer import build_transfer_learning_model # Use the transfer learning model builder
+from data_loader_transfer import split_and_copy_data_from_csv, get_image_data_generators
+from model_transfer import build_transfer_learning_model # Use the transfer learning model builder
 
 
 def train_model(model_to_use=None):
