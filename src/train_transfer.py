@@ -2,6 +2,8 @@ import os
 import pandas as pd
 import tensorflow as tf
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
+from tensorflow.keras.optimizers import Adam # <--- NEW: Import Adam optimizer here
+
 import numpy as np
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.metrics import f1_score, confusion_matrix
