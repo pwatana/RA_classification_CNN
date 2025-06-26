@@ -31,7 +31,7 @@ CLASS_NAMES = ['Healthy', 'RA']
 # Training parameters
 BATCH_SIZE = 32
 EPOCHS = 50 # Adjust as needed
-LEARNING_RATE = 0.0001 # <--- Adjusted LEARNING_RATE for transfer learning (often lower)
+LEARNING_RATE = 0.001 # <--- Adjusted LEARNING_RATE for transfer learning (often lower)
 VALIDATION_SPLIT = 0.2
 TEST_SPLIT = 0.1 # This will be taken from the remaining after validation split
 RANDOM_SEED = 42
