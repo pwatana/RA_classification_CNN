@@ -32,7 +32,7 @@ def build_transfer_learning_model():
         layers.GlobalAveragePooling2D(), # Reduces spatial dimensions to a single vector
         layers.Dense(256, activation='relu'), # A dense layer for feature combination
         layers.Dropout(0.5), # Regularization
-        layers.Dense(NUM_CLASSES, activation='sigmoid') # Output layer for 2 classes (RA/Healthy)
+        layers.Dense(1, activation='sigmoid') # Output layer for 2 classes (RA/Healthy)
     ])
 
     # 4. Compile the model
