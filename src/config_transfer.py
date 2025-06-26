@@ -19,8 +19,11 @@ os.makedirs(MODELS_DIR, exist_ok=True)
 # Image parameters
 IMG_HEIGHT = 224
 IMG_WIDTH = 224
-IMG_CHANNELS = 3 # <--- CHANGED: 3 channels for transfer learning model (RGB-like input)
-NUM_CLASSES = 2 # Still 2 classes (RA, Healthy) for binary
+IMG_CHANNELS = 3
+NUM_CLASSES = 2
+
+# Transfer Learning Backbone
+BACKBONE = 'efficientnetb0' # <--- NEW: Define the backbone name here
 
 # RA Classification Threshold (For binary classification: score >= 50.0 is RA)
 RA_SCORE_THRESHOLD = 50.0

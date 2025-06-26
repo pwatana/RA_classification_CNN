@@ -10,8 +10,12 @@ from sklearn.utils import resample # Import for resampling
 from PIL import Image, UnidentifiedImageError # Import for image validation
 import uuid # For unique IDs in oversampled filenames
 
-# <--- IMPORTANT: Import from config_transfer.py
-from config_transfer import RAW_DATA_DIR, PROCESSED_DATA_DIR, IMG_HEIGHT, IMG_WIDTH, BATCH_SIZE, RANDOM_SEED, VALIDATION_SPLIT, TEST_SPLIT, IMG_CHANNELS, RA_SCORE_THRESHOLD, MODELS_DIR, FILTERED_IMAGES_LOG
+# <--- IMPORTANT: Import segmentation_models and BACKBONE from config_transfer
+import segmentation_models as sm
+from src.config_transfer import RAW_DATA_DIR, PROCESSED_DATA_DIR, IMG_HEIGHT, IMG_WIDTH, BATCH_SIZE, RANDOM_SEED, VALIDATION_SPLIT, TEST_SPLIT, IMG_CHANNELS, RA_SCORE_THRESHOLD, MODELS_DIR, FILTERED_IMAGES_LOG, BACKBONE # <--- Added BACKBONE
+
+# Cache the preprocessing function for the chosen backbone (EfficientNetB0)
+_preprocessing_fn = sm.get_preprocessing(BACKBONE) # This will be specific to EfficientNetB0
 
 
 def prepare_data_directories():
@@ -167,20 +171,21 @@ def split_and_copy_data_from_csv():
 def custom_image_preprocessing(img_array):
     """
     Applies a series of preprocessing steps to an image array:
-    1. Grayscale conversion (from original RGB input if needed)
+    1. Grayscale conversion (from original RGB input)
     2. Gaussian Denoising
     3. CLAHE (Contrast Limited Adaptive Histogram Equalization)
-    4. Normalization to [0, 1]
-    5. Ensures 3 output channels (for transfer learning model).
+    4. Converts to 3 channels (RGB-like).
+    5. Applies backbone-specific normalization (e.g., ImageNet mean/std).
     """
-    img_array_uint8 = img_array.astype(np.uint8)
+    # ImageDataGenerator passes image as float32 in 0-255 range. Convert to uint8 for cv2.
+    img_array_uint8 = tf.cast(img_array, tf.uint8).numpy() # Ensure 0-255 range for cv2 operations
 
-    # Convert original RGB input to Grayscale for OpenCV processing (ImageDataGenerator loads as RGB)
+    # 1. Grayscale Conversion (from 3 channels to 1, if needed)
     if len(img_array_uint8.shape) == 3 and img_array_uint8.shape[2] == 3:
         img_gray = cv2.cvtColor(img_array_uint8, cv2.COLOR_RGB2GRAY)
     elif len(img_array_uint8.shape) == 3 and img_array_uint8.shape[2] == 1:
         img_gray = np.squeeze(img_array_uint8, axis=-1)
-    else: # Fallback or if already 2D
+    else:
         img_gray = img_array_uint8
 
 
@@ -191,15 +196,15 @@ def custom_image_preprocessing(img_array):
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     img_clahe = clahe.apply(img_denoised)
 
-    # 4. Normalization to [0, 1]
-    img_normalized_2d = img_clahe / 255.0
+    # 4. Convert (H,W) grayscale to (H,W,3) RGB-like.
+    # This prepares it for the _preprocessing_fn which expects 3 channels.
+    img_3_channel = np.stack([img_clahe, img_clahe, img_clahe], axis=-1)
 
+    # 5. Apply specialized preprocessing for the EfficientNetB0 backbone
+    # This function expects input in 0-255 (uint8 or float32) and outputs normalized float32.
+    processed_image = _preprocessing_fn(img_3_channel)
 
-    # 5. Ensure the output has 3 channels for Keras (H, W, 3) for transfer learning
-    # This assumes IMG_CHANNELS from config_transfer is 3
-    img_final = np.stack([img_normalized_2d, img_normalized_2d, img_normalized_2d], axis=-1) # (H,W) -> (H,W,3)
-
-    return img_final
+    return processed_image
 
 
 def get_image_data_generators():
