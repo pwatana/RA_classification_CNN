@@ -12,7 +12,7 @@ import uuid # For unique IDs in oversampled filenames
 
 # <--- IMPORTANT: Import segmentation_models and BACKBONE from config_transfer
 import segmentation_models as sm
-from config_transfer import RAW_DATA_DIR, PROCESSED_DATA_DIR, IMG_HEIGHT, IMG_WIDTH, BATCH_SIZE, RANDOM_SEED, VALIDATION_SPLIT, TEST_SPLIT, IMG_CHANNELS, RA_SCORE_THRESHOLD, MODELS_DIR, FILTERED_IMAGES_LOG, BACKBONE # <--- Added BACKBONE
+from .config_transfer import RAW_DATA_DIR, PROCESSED_DATA_DIR, IMG_HEIGHT, IMG_WIDTH, BATCH_SIZE, RANDOM_SEED, VALIDATION_SPLIT, TEST_SPLIT, IMG_CHANNELS, RA_SCORE_THRESHOLD, MODELS_DIR, FILTERED_IMAGES_LOG, BACKBONE # <--- Added BACKBONE
 
 # Cache the preprocessing function for the chosen backbone (EfficientNetB0)
 _preprocessing_fn = sm.get_preprocessing(BACKBONE) # This will be specific to EfficientNetB0
